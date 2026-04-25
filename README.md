@@ -6,124 +6,73 @@ Sistema completo de gestão de pedidos para restaurantes, desenvolvido com **ASP
 
 ## 🚀 Funcionalidades
 
-* ✅ Abertura de pedido por mesa
-* ✅ Associação de pedido ao usuário (e garçom)
-* ✅ Adição de itens ao pedido
-* ✅ Controle de status do pedido
-* ✅ Integração com banco de dados relacional (SQL Server)
-* ✅ Estrutura preparada para cálculo de total e fechamento de conta
+* ✅ **Gestão de Mesas:** Controle de status (Livre/Ocupada) em tempo real.
+* ✅ **Abertura de Pedidos:** Associação automática de mesas e usuários (Garçons).
+* ✅ **Cardápio Dinâmico:** Consumo de produtos direto da API com preços e categorias.
+* ✅ **Carrinho de Compras:** Adição de itens com cálculo de subtotal por pedido.
+* ✅ **Persistência de Dados:** Integração robusta com SQL Server via Entity Framework Core.
+* 🛠️ **Painel da Cozinha:** Visualização de pedidos pendentes para produção (Em progresso).
 
 ---
 
 ## 🧠 Arquitetura
 
-O sistema segue o modelo de separação em camadas:
+O sistema segue o modelo de separação de responsabilidades:
 
-* **API (Backend)** → Regras de negócio e controle dos pedidos
-* **Banco de Dados** → Persistência das informações
-* **Frontend (em desenvolvimento)** → Interface para mesas, cozinha e caixa
+* **Backend (C#):** API RESTful responsável pelas regras de negócio, rotas e segurança.
+* **Database (SQL Server):** Modelagem relacional garantindo a integridade dos dados.
+* **Frontend (JS/HTML):** Interface leve e responsiva para operação em diversos dispositivos.
 
 ---
 
-## 🛠️ Tecnologias utilizadas
+## 🛠️ Tecnologias Utilizadas
 
-* ASP.NET Core 8
-* Entity Framework Core
-* SQL Server
-* Swagger (documentação e testes da API)
+* **Backend:** ASP.NET Core 8, Entity Framework Core.
+* **Frontend:** JavaScript Moderno (Fetch API), HTML5, CSS3.
+* **Banco de Dados:** Microsoft SQL Server.
+* **Documentação:** Swagger UI para testes de endpoints.
+
+---
+
+## 🔌 Endpoints Principais
+
+| Método | Endpoint | Descrição |
+| :--- | :--- | :--- |
+| **POST** | `/api/pedido/abrir` | Inicia um novo atendimento para uma mesa específica. |
+| **POST** | `/api/pedido/adicionar-item` | Adiciona produtos e quantidades ao pedido aberto. |
+| **GET** | `/api/mesa` | Lista todas as mesas e seus status atuais (Livre/Ocupada). |
+| **GET** | `/api/produto` | Retorna a lista completa de produtos do cardápio. |
 
 ---
 
 ## 📦 Estrutura do Projeto
 
-* `Controllers/` → Endpoints da API
-* `Models/` → Entidades do sistema
-* `Data/` → Contexto do banco de dados
-* `Migrations/` → Versionamento do banco
-
----
-
-## 🔌 Endpoints principais
-
-### 📌 Abrir pedido
-
-POST /api/pedido/abrir?mesaId=1&usuarioId=5
-
----
-
-### 📌 Adicionar item (em desenvolvimento)
-
-POST /api/pedido/adicionar-item
-
----
-
-### 📌 Listar pedidos
-
-GET /api/pedido
+* `Controllers/` → Endpoints da API (Mesa, Pedido, Produto, Usuario).
+* `Models/` → Entidades do sistema e DTOs para transferência de dados.
+* `Data/` → Contexto do banco de dados e configurações de acesso.
+* `Frontend/` → Interface do usuário (Cardápio, Login, Cozinha).
 
 ---
 
 ## 🧪 Como rodar o projeto
 
-1. Clone o repositório:
+1. **Clone o repositório:**
+   ```bash
+   git clone [https://github.com/seu-usuario/seu-repo.git](https://github.com/seu-usuario/seu-repo.git)
 
-```bash
-git clone https://github.com/seu-usuario/seu-repo.git
-```
+   Banco de Dados:
+2. Certifique-se de que o SQL Server está rodando e execute os scripts para as tabelas: Mesa, Usuario, Produto, Pedido, PedidoItem e Pagamento.
 
-2. Configure a connection string no `appsettings.json`:
+3. Configuração:
+Ajuste a Connection String no arquivo appsettings.json.
 
-```json
-"ConnectionStrings": {
-  "DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=NomeDoSeuBanco;Trusted_Connection=True;"
-}
-```
+4. Execução:
+Abra o projeto no Visual Studio, pressione F5 para rodar a API e abra o arquivo cardapio.html no seu navegador.
 
-3. Execute as migrations (ou crie o banco manualmente)
-
-4. Rode o projeto:
-
-```bash
-dotnet run
-```
-
-5. Acesse o Swagger:
-
-```
-https://localhost:xxxx/swagger
-```
-
----
-
-## 🧾 Banco de Dados
-
-Principais tabelas:
-
-* **Mesa**
-* **Usuario**
-* **Produto**
-* **Pedido**
-* **PedidoItem**
-* **Pagamento**
-
----
-
-## 🎯 Objetivo do Projeto
-
-* Boas práticas de desenvolvimento backend
-* Modelagem de banco de dados
-* Construção de APIs REST
-* Simulação de sistema real de restaurante
-
----
-
-## 👨‍💻 Autor
-
+👨‍💻 Autor
 Wilson Yuri Alves
-📧 [yuri.tinocoalves13@hotmail.com](mailto:yuri.tinocoalves13@hotmail.com)
+Mid-level .NET Developer
+📧 yuri.tinocoalves13@hotmail.com
 
----
-
-## 📄 Licença
-
-Este projeto é de uso livre para fins de estudo (Mas se quiser alugar como SAAS pra sua empresa, podemos conversar, basta me contatar!).
+📄 Licença
+Este projeto é de uso livre para fins de estudo e portfólio (mas se quiser contratar um modelo pro seu negócio basta me contatar!).
