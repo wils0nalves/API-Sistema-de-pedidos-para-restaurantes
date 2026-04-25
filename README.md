@@ -68,10 +68,9 @@ Ajuste a Connection String no arquivo appsettings.json.
 4. Execução:
 Abra o projeto no Visual Studio, pressione F5 para rodar a API e abra o arquivo cardapio.html no seu navegador.
 
+---
+
 👨‍💻 Autor
 Wilson Yuri Alves
 Mid-level .NET Developer
 📧 yuri.tinocoalves13@hotmail.com
-
-📄 Licença
-Este projeto é de uso livre para fins de estudo e portfólio (mas se quiser contratar um modelo pro seu negócio basta me contatar!).
