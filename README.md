@@ -60,7 +60,6 @@ O sistema segue o modelo de separação de responsabilidades:
    ```bash
    git clone [https://github.com/seu-usuario/seu-repo.git](https://github.com/seu-usuario/seu-repo.git)
 
-   Banco de Dados:
 2. Certifique-se de que o SQL Server está rodando e execute os scripts para as tabelas: Mesa, Usuario, Produto, Pedido, PedidoItem e Pagamento.
 
 3. Configuração:
