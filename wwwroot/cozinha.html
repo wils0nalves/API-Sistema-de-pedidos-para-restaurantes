@@ -1,0 +1,249 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel da Cozinha - Pizzaria</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --pendente: #ff9800;
+            --pronto: #28a745;
+            --dark: #1a1a1a;
+            --bg: #121212; /* Fundo escuro para não cansar a vista no brilho da tela */
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg);
+            color: #fff;
+        }
+
+        .header {
+            background: #000;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 3px solid var(--pendente);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+
+            .header h1 {
+                margin: 0;
+                font-size: 24px;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+            }
+
+        .status-dot {
+            height: 12px;
+            width: 12px;
+            background-color: #bbb;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .online {
+            background-color: var(--pronto);
+            box-shadow: 0 0 10px var(--pronto);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 25px;
+        }
+
+        .card {
+            background: #222;
+            border-radius: 15px;
+            padding: 0;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            border: 2px solid #333;
+        }
+
+        .card-header {
+            padding: 15px;
+            background: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pedido-id {
+            font-weight: bold;
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .card-body {
+            padding: 20px;
+            flex: 1;
+        }
+
+        .produto-nome {
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .quantidade-badge {
+            background: var(--pendente);
+            color: #000;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .card-footer {
+            padding: 15px;
+        }
+
+        button {
+            width: 100%;
+            padding: 18px;
+            border: none;
+            background: var(--pronto);
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+            border-radius: 10px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: 0.2s;
+        }
+
+            button:hover {
+                background: #218838;
+                transform: translateY(-2px);
+            }
+
+            button:active {
+                transform: translateY(0);
+            }
+
+        /* Estilos de Status */
+        .card.pendente {
+            border-top: 8px solid var(--pendente);
+        }
+
+        .card.pronto {
+            border-top: 8px solid var(--pronto);
+            opacity: 0.6;
+        }
+
+            .card.pronto button {
+                background: #555;
+                cursor: default;
+            }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 100px;
+            color: #666;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <span id="status-signal" class="status-dot"></span>
+        <h1>👨‍🍳 Ordem de Produção</h1>
+    </div>
+
+    <div id="pedidos" class="grid">
+        <div class="empty-state">Aguardando novos pedidos...</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+
+    <script>
+        function carregar() {
+            fetch("https://localhost:7108/api/Pedido/cozinha")
+                .then(r => r.json())
+                .then(itens => {
+                    let html = "";
+                    if (itens.length === 0) {
+                        html = '<div class="empty-state">🔥 Cozinha limpa! Sem pedidos no momento.</div>';
+                    } else {
+                        itens.forEach(i => {
+                            let statusClass = i.status === "Pronto" ? "pronto" : "pendente";
+                            let btnTexto = i.status === "Pronto" ? "Concluído ✅" : "Finalizar Pedido";
+                            let btnOnClick = i.status === "Pronto" ? "" : `onclick="pronto(${i.id})"`;
+
+                            html += `
+                                    <div class="card ${statusClass}">
+                                        <div class="card-header">
+                                            <span class="pedido-id">REF #${i.id}</span>
+                                            <span class="quantidade-badge">x${i.quantidade}</span>
+                                        </div>
+                                        <div class="card-body">
+                                            <span class="produto-nome">${i.produto?.nome ?? "Item Desconhecido"}</span>
+                                            <div style="color: #888; font-size: 14px;">Mesa: ${i.pedido?.mesaId ?? '--'}</div>
+                                        </div>
+                                        <div class="card-footer">
+                                            <button ${btnOnClick}>${btnTexto}</button>
+                                        </div>
+                                    </div>
+                                `;
+                        });
+                    }
+                    document.getElementById("pedidos").innerHTML = html;
+                })
+                .catch(() => {
+                    document.getElementById("pedidos").innerHTML = "<p style='color:red; text-align:center'>Erro de conexão com o Servidor SQL</p>";
+                });
+        }
+
+        function pronto(id) {
+            fetch(`https://localhost:7108/api/Pedido/item/status?itemId=${id}&status=Pronto`, {
+                method: "POST"
+            })
+                .then(r => {
+                    if (!r.ok) throw "Erro";
+                    carregar();
+                })
+                .catch(() => alert("Erro ao atualizar status"));
+        }
+
+        // SIGNALR
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("https://localhost:7108/pedidoHub")
+            .withAutomaticReconnect()
+            .build();
+
+        connection.on("novoPedido", () => {
+            // Toca um alerta sonoro opcional aqui se quiser
+            carregar();
+        });
+
+        connection.start()
+            .then(() => {
+                console.log("SignalR conectado");
+                document.getElementById("status-signal").classList.add("online");
+            })
+            .catch(() => {
+                console.log("Fallback polling");
+                setInterval(carregar, 5000);
+            });
+
+        carregar();
+    </script>
+</body>
+</html>

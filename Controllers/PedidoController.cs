@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using PizzariaAPI.Data;
 using PizzariaAPI.Models;
@@ -10,16 +11,28 @@ namespace PizzariaAPI.Controllers
     public class PedidoController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IHubContext<PedidoHub> _hub;
 
-        public PedidoController(AppDbContext context)
+        public PedidoController(AppDbContext context, IHubContext<PedidoHub> hub)
         {
             _context = context;
+            _hub = hub;
         }
 
         // 🔹 1. Abrir pedido
         [HttpPost("abrir")]
         public async Task<ActionResult> AbrirPedido(int mesaId, int usuarioId)
         {
+            var pedidoExistente = await _context.Pedidos
+                .FirstOrDefaultAsync(p => p.MesaId == mesaId && p.Status != "Pago");
+
+            if (pedidoExistente != null)
+                return BadRequest("Já existe um pedido aberto para essa mesa");
+
+            var usuario = await _context.Usuarios.FindAsync(usuarioId);
+            if (usuario == null)
+                return BadRequest("Usuário inválido");
+
             var pedido = new Pedido
             {
                 MesaId = mesaId,
@@ -34,12 +47,21 @@ namespace PizzariaAPI.Controllers
             return Ok(pedido);
         }
 
-        // 🔹 2. Adicionar item ao pedido
+        // 🔹 2. Adicionar item
         [HttpPost("adicionar-item")]
         public async Task<ActionResult> AdicionarItem(int pedidoId, int produtoId, int quantidade)
         {
-            var produto = await _context.Produtos.FindAsync(produtoId);
+            if (quantidade <= 0)
+                return BadRequest("Quantidade inválida");
 
+            var pedido = await _context.Pedidos.FindAsync(pedidoId);
+            if (pedido == null)
+                return NotFound("Pedido não encontrado");
+
+            if (pedido.Status == "Pago")
+                return BadRequest("Pedido já está pago");
+
+            var produto = await _context.Produtos.FindAsync(produtoId);
             if (produto == null)
                 return NotFound("Produto não encontrado");
 
@@ -55,16 +77,18 @@ namespace PizzariaAPI.Controllers
             _context.PedidoItens.Add(item);
             await _context.SaveChangesAsync();
 
+            // 🔥 DISPARA TEMPO REAL
+            await _hub.Clients.All.SendAsync("novoPedido");
+
             return Ok(item);
         }
 
-        // 🔹 3. Ver pedido por mesa
+        // 🔹 3. Buscar pedido por mesa
         [HttpGet("mesa/{mesaId}")]
         public async Task<ActionResult> GetPorMesa(int mesaId)
         {
             var pedido = await _context.Pedidos
                 .Where(p => p.MesaId == mesaId && p.Status != "Pago")
-                .Include(p => p.Id)
                 .FirstOrDefaultAsync();
 
             if (pedido == null)
@@ -72,7 +96,7 @@ namespace PizzariaAPI.Controllers
 
             var itens = await _context.PedidoItens
                 .Where(i => i.PedidoId == pedido.Id)
-                .Include(i => i.ProdutoId)
+                .Include(i => i.Produto)
                 .ToListAsync();
 
             return Ok(new
@@ -80,6 +104,143 @@ namespace PizzariaAPI.Controllers
                 Pedido = pedido,
                 Itens = itens
             });
+        }
+
+        // 🔹 4. Listar itens
+        [HttpGet("{pedidoId}/itens")]
+        public async Task<ActionResult> ListarItens(int pedidoId)
+        {
+            var itens = await _context.PedidoItens
+                .Where(i => i.PedidoId == pedidoId)
+                .Include(i => i.Produto)
+                .ToListAsync();
+
+            return Ok(itens);
+        }
+
+        // 🔹 5. Total
+        [HttpGet("{pedidoId}/total")]
+        public async Task<ActionResult> CalcularTotal(int pedidoId)
+        {
+            var itens = await _context.PedidoItens
+                .Where(i => i.PedidoId == pedidoId)
+                .ToListAsync();
+
+            if (!itens.Any())
+                return BadRequest("Pedido sem itens");
+
+            var total = itens.Sum(i => i.Quantidade * i.PrecoUnitario);
+
+            return Ok(total);
+        }
+
+        // 🔹 6. Fechar pedido
+        [HttpPost("fechar")]
+        public async Task<ActionResult> FecharPedido(int pedidoId)
+        {
+            var pedido = await _context.Pedidos.FindAsync(pedidoId);
+
+            if (pedido == null)
+                return NotFound();
+
+            pedido.Status = "Finalizado";
+
+            await _context.SaveChangesAsync();
+
+            return Ok(pedido);
+        }
+
+        // 🔹 7. Cozinha
+        [HttpGet("cozinha")]
+        public async Task<ActionResult> PedidosCozinha()
+        {
+            var itens = await _context.PedidoItens
+                .Where(i => i.Status == "Pendente" || i.Status == "Em preparo")
+                .Include(i => i.Produto)
+                .ToListAsync();
+
+            return Ok(itens);
+        }
+
+        // 🔹 8. Atualizar status
+        [HttpPost("item/status")]
+        public async Task<ActionResult> AtualizarStatusItem(int itemId, string status)
+        {
+            var item = await _context.PedidoItens.FindAsync(itemId);
+
+            if (item == null)
+                return NotFound();
+
+            item.Status = status;
+
+            await _context.SaveChangesAsync();
+
+            // atualiza em tempo real também
+            await _hub.Clients.All.SendAsync("novoPedido");
+
+            return Ok(item);
+        }
+
+        // 🔹 9. Pagar
+        [HttpPost("pagar")]
+        public async Task<ActionResult> PagarPedido(int pedidoId, string tipo)
+        {
+            var pedido = await _context.Pedidos.FindAsync(pedidoId);
+
+            if (pedido == null)
+                return NotFound();
+
+            var itens = await _context.PedidoItens
+                .Where(i => i.PedidoId == pedidoId)
+                .ToListAsync();
+
+            if (!itens.Any())
+                return BadRequest("Pedido vazio");
+
+            var total = itens.Sum(i => i.Quantidade * i.PrecoUnitario);
+
+            var pagamento = new Pagamento
+            {
+                PedidoId = pedidoId,
+                Valor = total,
+                Tipo = tipo,
+                DataPagamento = DateTime.Now
+            };
+
+            pedido.Status = "Pago";
+
+            _context.Pagamentos.Add(pagamento);
+            await _context.SaveChangesAsync();
+
+            return Ok(pagamento);
+        }
+
+        // 🔹 10. Relatório
+        [HttpGet("relatorio/diario")]
+        public async Task<ActionResult> FaturamentoDiario()
+        {
+            var hoje = DateTime.Today;
+
+            var total = await _context.Pagamentos
+                .Where(p => p.DataPagamento >= hoje)
+                .SumAsync(p => p.Valor);
+
+            return Ok(total);
+        }
+        [HttpDelete("item/{itemId}")]
+        public async Task<ActionResult> RemoverItem(int itemId)
+        {
+            var item = await _context.PedidoItens.FindAsync(itemId);
+
+            if (item == null)
+                return NotFound("Item não encontrado");
+
+            _context.PedidoItens.Remove(item);
+            await _context.SaveChangesAsync();
+
+            await _hub.Clients.All.SendAsync("novoPedido");
+
+            return Ok();
         }
     }
 }

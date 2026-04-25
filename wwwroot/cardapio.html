@@ -1,0 +1,352 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cardápio Digital - Pizzaria</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #e73c7e;
+            --secondary: #23a6d5;
+            --success: #28a745;
+            --danger: #dc3545;
+            --dark: #2c3e50;
+            --light: #f8f9fa;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            background: #f0f2f5;
+            color: var(--dark);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: white;
+            padding: 10px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+
+        .user-info span {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .btn-logout {
+            background: var(--light);
+            border: 1px solid #ddd;
+            padding: 6px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .content-area {
+            flex: 2;
+            padding: 25px;
+            overflow-y: auto;
+        }
+
+        .mesa-control {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .btn-abrir {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .grid-produtos {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .product-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid #eee;
+            transition: 0.3s;
+        }
+
+            .product-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            }
+
+        .btn-add {
+            background: var(--success);
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .sidebar-cart {
+            flex: 1;
+            max-width: 350px;
+            background: white;
+            border-left: 1px solid #eee;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cart-items {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .cart-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+        }
+
+        .modal-mesas {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .grid-selecao-mesas {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .mesa-opcao {
+            padding: 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            border: 2px solid #eee;
+            transition: 0.2s;
+        }
+
+        .disponivel {
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+            .disponivel:hover {
+                background: #e8f5e9;
+            }
+
+        .ocupada {
+            border-color: var(--danger);
+            color: var(--danger);
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="user-info">👤 Logado como: <span id="usuario">...</span></div>
+        <button class="btn-logout" onclick="logout()">Sair</button>
+    </header>
+
+    <main class="main-container">
+        <section class="content-area">
+            <div class="mesa-control">
+                <button class="btn-abrir" onclick="abrirSelecaoMesa()">📍 Selecionar Mesa</button>
+                <div id="mesa-info" style="font-weight: bold;">Nenhuma selecionada</div>
+                <input type="hidden" id="mesa-id-hidden">
+                <button id="btn-confirmar" class="btn-abrir" style="background:var(--success); display:none;" onclick="confirmarPedido()">Iniciar Pedido</button>
+            </div>
+
+            <h2>🍕 Cardápio</h2>
+            <div id="lista-produtos" class="grid-produtos"></div>
+        </section>
+
+        <aside class="sidebar-cart">
+            <h3>🧾 Resumo (Pedido #<span id="num-pedido">--</span>)</h3>
+            <div id="itens-carrinho" class="cart-items">
+                <p style="color: #999; text-align: center;">Inicie um pedido para ver os itens.</p>
+            </div>
+            <div class="cart-footer">
+                <hr>
+                <h4 id="total-carrinho" style="margin: 10px 0;">Total: R$ 0.00</h4>
+            </div>
+        </aside>
+    </main>
+
+    <div id="modalMesas" class="modal-mesas">
+        <div class="modal-content">
+            <h3>Escolha uma Mesa Livre</h3>
+            <div id="grid-mesas" class="grid-selecao-mesas"></div>
+            <button onclick="fecharModal()" class="btn-logout">Cancelar</button>
+        </div>
+    </div>
+
+    <script>
+        // Pega o ID do usuário logado (usando o 9 como fallback do seu print)
+        let usuarioId = localStorage.getItem("usuarioId") || 9;
+        let pedidoId = null;
+
+        document.getElementById("usuario").innerText = usuarioId;
+
+        function logout() { localStorage.clear(); window.location = "login.html"; }
+
+        // 1. CARREGAR PRODUTOS DA API
+        function carregarProdutos() {
+            fetch("https://localhost:7108/api/Produto")
+                .then(r => r.json())
+                .then(dados => {
+                    let html = "";
+                    dados.forEach(p => {
+                        html += `
+                                <div class="product-card">
+                                    <b style="font-size: 16px;">${p.nome}</b><br>
+                                    <span style="color: #666;">R$ ${p.preco.toFixed(2)}</span><br>
+                                    <button class="btn-add" onclick="adicionarItem(${p.id})">Adicionar +</button>
+                                </div>`;
+                    });
+                    document.getElementById("lista-produtos").innerHTML = html;
+                });
+        }
+
+        // 2. MODAL DE MESAS (USANDO ID E NÚMERO)
+        function abrirSelecaoMesa() {
+            document.getElementById("modalMesas").style.display = "flex";
+            fetch("https://localhost:7108/api/Mesa")
+                .then(r => r.json())
+                .then(mesas => {
+                    let html = "";
+                    mesas.forEach(m => {
+                        const isLivre = m.status === "Livre";
+                        // Passamos o ID técnico (m.id) e o número visual (m.numero)
+                        html += `<div class="mesa-opcao ${isLivre ? 'disponivel' : 'ocupada'}"
+                                         onclick="${isLivre ? `selecionar(${m.id}, ${m.numero})` : ''}">
+                                         Mesa ${m.numero}</div>`;
+                    });
+                    document.getElementById("grid-mesas").innerHTML = html;
+                });
+        }
+
+        function fecharModal() { document.getElementById("modalMesas").style.display = "none"; }
+
+        function selecionar(id, num) {
+            document.getElementById("mesa-id-hidden").value = id; // ID para a API
+            document.getElementById("mesa-info").innerText = "Mesa " + num + " selecionada"; // Número para o usuário
+            document.getElementById("btn-confirmar").style.display = "block";
+            fecharModal();
+        }
+
+        // 3. INICIAR ATENDIMENTO (POST NA API)
+        function confirmarPedido() {
+            const mesaId = document.getElementById("mesa-id-hidden").value;
+
+            fetch(`https://localhost:7108/api/Pedido/abrir?mesaId=${mesaId}&usuarioId=${usuarioId}`, {
+                method: "POST"
+            })
+                .then(r => {
+                    if (!r.ok) throw new Error("Erro ao abrir atendimento");
+                    return r.json();
+                })
+                .then(p => {
+                    pedidoId = p.id; // Salva o ID gerado pelo banco
+                    document.getElementById("num-pedido").innerText = pedidoId;
+                    document.getElementById("btn-confirmar").style.display = "none";
+                    alert("Atendimento #" + pedidoId + " iniciado!");
+                    atualizarCarrinho();
+                })
+                .catch(err => alert("Erro: Esta mesa pode estar ocupada ou a API está offline."));
+        }
+
+        // 4. ADICIONAR PIZZA AO PEDIDO
+        function adicionarItem(prodId) {
+            if (!pedidoId) return alert("Selecione uma mesa e clique em 'Iniciar Pedido' primeiro!");
+
+            fetch(`https://localhost:7108/api/Pedido/adicionar-item?pedidoId=${pedidoId}&produtoId=${prodId}&quantidade=1`, {
+                method: "POST"
+            })
+                .then(r => {
+                    if (r.ok) atualizarCarrinho();
+                    else alert("Erro ao adicionar item.");
+                });
+        }
+
+        // 5. ATUALIZAR RESUMO LATERAL
+        function atualizarCarrinho() {
+            if (!pedidoId) return;
+
+            fetch(`https://localhost:7108/api/Pedido/${pedidoId}/itens`)
+                .then(r => r.json())
+                .then(itens => {
+                    let html = "";
+                    let total = 0;
+                    itens.forEach(i => {
+                        const subtotal = i.quantidade * i.precoUnitario;
+                        html += `
+                                <div class="cart-item">
+                                    <b>${i.produto.nome}</b><br>
+                                    ${i.quantidade}x R$ ${i.precoUnitario.toFixed(2)} = <b>R$ ${subtotal.toFixed(2)}</b>
+                                </div>`;
+                        total += subtotal;
+                    });
+                    document.getElementById("itens-carrinho").innerHTML = html || "<p>Nenhum item adicionado.</p>";
+                    document.getElementById("total-carrinho").innerText = "Total: R$ " + total.toFixed(2);
+                });
+        }
+
+        // Inicializa o cardápio
+        carregarProdutos();
+    </script>
+</body>
+</html>
