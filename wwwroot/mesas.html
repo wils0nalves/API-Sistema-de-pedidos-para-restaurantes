@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Painel de Mesas - Pizzaria</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -13,10 +14,8 @@
 
         h2 {
             text-align: center;
-            color: #333;
         }
 
-        /* Grade onde as mesas vão aparecer */
         #container-mesas {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -24,18 +23,15 @@
             margin-top: 30px;
         }
 
-        /* Estilo base do card da mesa */
         .card-mesa {
             background: white;
             padding: 20px;
             border-radius: 15px;
             text-align: center;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            border-top: 10px solid #ccc; /* Cor padrão */
-            transition: 0.3s;
+            border-top: 10px solid #ccc;
         }
 
-        /* Cores baseadas no status que você tem no SQL */
         .verde {
             border-top-color: #28a745;
         }
@@ -44,94 +40,77 @@
             border-top-color: #dc3545;
         }
 
-        .card-mesa h3 {
-            margin: 0;
-            font-size: 22px;
-        }
-
-        .card-mesa p {
-            color: #666;
-            font-size: 14px;
-        }
-
         button {
+            margin-top: 10px;
+            padding: 10px;
+            border: none;
             background: #333;
             color: white;
-            border: none;
-            padding: 10px;
             border-radius: 8px;
             cursor: pointer;
             width: 100%;
-            margin-top: 10px;
-            font-weight: bold;
         }
 
             button:hover {
-                background: #000;
+                background: black;
             }
     </style>
 </head>
+
 <body>
 
     <h2>📊 Monitoramento de Mesas</h2>
 
-    <div id="container-mesas">
-        <p>Carregando mesas do SQL Server...</p>
-    </div>
+    <div id="container-mesas">Carregando...</div>
 
     <script>
-        // 1. Função para buscar as mesas
+
         function carregarStatusMesas() {
-            // Chamando sua API local
+
             fetch("https://localhost:7108/api/Mesa")
-                .then(r => {
-                    if (!r.ok) throw new Error("Erro na API");
-                    return r.json();
-                })
+                .then(r => r.json())
                 .then(mesas => {
+
                     let html = "";
+
                     mesas.forEach(m => {
-                        // Verifica se no seu SQL o status é 'Livre'
+
                         const isLivre = m.status === "Livre";
 
                         html += `
-                                <div class="card-mesa ${isLivre ? 'verde' : 'vermelha'}">
-                                    <h3>Mesa ${m.numero}</h3>
-                                    <p>Status: ${m.status}</p>
-                                    ${!isLivre ? `<button onclick="finalizarMesa(${m.numero})">Fechar Conta</button>` : ''}
-                                </div>
-                            `;
+                        <div class="card-mesa ${isLivre ? 'verde' : 'vermelha'}">
+                            <h3>Mesa ${m.numero}</h3>
+                            <p>Status: ${m.status}</p>
+                            ${!isLivre ? `<button onclick="finalizarMesa(${m.id})">Fechar Mesa</button>` : ''}
+                        </div>
+                    `;
                     });
+
                     document.getElementById("container-mesas").innerHTML = html;
-                })
-                .catch(err => {
-                    document.getElementById("container-mesas").innerHTML =
-                        "<p style='color:red'>Erro ao conectar na API. Verifique o Visual Studio!</p>";
                 });
         }
 
-        // 2. Função para o seu endpoint POST
         function finalizarMesa(mesaId) {
-            if (!confirm("Deseja realmente fechar a mesa " + mesaId + "?")) return;
 
-            fetch(`https://localhost:7108/api/Pedido/fechar?mesaId=${mesaId}`, {
+            if (!confirm("Deseja fechar essa mesa?")) return;
+
+            fetch(`https://localhost:7108/api/Pedido/fechar-mesa?mesaId=${mesaId}`, {
                 method: "POST"
             })
                 .then(r => {
                     if (r.ok) {
-                        alert("Mesa finalizada com sucesso!");
-                        carregarStatusMesas(); // Atualiza a tela sem dar F5
+                        alert("Mesa fechada!");
+                        carregarStatusMesas();
                     } else {
-                        alert("Erro ao fechar mesa.");
+                        alert("Erro ao fechar mesa");
                     }
                 });
         }
 
-        // Inicia a busca assim que a página abre
         carregarStatusMesas();
+        setInterval(carregarStatusMesas, 5000);
 
-        // Dica: Atualizar automaticamente a cada 10 segundos
-        setInterval(carregarStatusMesas, 10000);
     </script>
+
 </body>
 </html>

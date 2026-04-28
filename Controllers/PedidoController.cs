@@ -23,11 +23,11 @@ namespace PizzariaAPI.Controllers
         [HttpPost("abrir")]
         public async Task<ActionResult> AbrirPedido(int mesaId, int usuarioId)
         {
-            var pedidoExistente = await _context.Pedidos
-                .FirstOrDefaultAsync(p => p.MesaId == mesaId && p.Status != "Pago");
+            var mesaOcupada = await _context.Pedidos
+                .AnyAsync(p => p.MesaId == mesaId && p.Status == "Aberto");
 
-            if (pedidoExistente != null)
-                return BadRequest("Já existe um pedido aberto para essa mesa");
+            if (mesaOcupada)
+                return BadRequest("Mesa já está ocupada");
 
             var usuario = await _context.Usuarios.FindAsync(usuarioId);
             if (usuario == null)
@@ -58,8 +58,8 @@ namespace PizzariaAPI.Controllers
             if (pedido == null)
                 return NotFound("Pedido não encontrado");
 
-            if (pedido.Status == "Pago")
-                return BadRequest("Pedido já está pago");
+            if (pedido.Status != "Aberto")
+                return BadRequest("Pedido não está aberto");
 
             var produto = await _context.Produtos.FindAsync(produtoId);
             if (produto == null)
@@ -77,7 +77,6 @@ namespace PizzariaAPI.Controllers
             _context.PedidoItens.Add(item);
             await _context.SaveChangesAsync();
 
-            // 🔥 DISPARA TEMPO REAL
             await _hub.Clients.All.SendAsync("novoPedido");
 
             return Ok(item);
@@ -88,7 +87,7 @@ namespace PizzariaAPI.Controllers
         public async Task<ActionResult> GetPorMesa(int mesaId)
         {
             var pedido = await _context.Pedidos
-                .Where(p => p.MesaId == mesaId && p.Status != "Pago")
+                .Where(p => p.MesaId == mesaId && p.Status == "Aberto")
                 .FirstOrDefaultAsync();
 
             if (pedido == null)
@@ -143,7 +142,10 @@ namespace PizzariaAPI.Controllers
             if (pedido == null)
                 return NotFound();
 
-            pedido.Status = "Finalizado";
+            if (pedido.Status != "Aberto")
+                return BadRequest("Pedido não está aberto");
+
+            pedido.Status = "Fechado";
 
             await _context.SaveChangesAsync();
 
@@ -162,7 +164,7 @@ namespace PizzariaAPI.Controllers
             return Ok(itens);
         }
 
-        // 🔹 8. Atualizar status
+        // 🔹 8. Atualizar status item
         [HttpPost("item/status")]
         public async Task<ActionResult> AtualizarStatusItem(int itemId, string status)
         {
@@ -175,13 +177,12 @@ namespace PizzariaAPI.Controllers
 
             await _context.SaveChangesAsync();
 
-            // atualiza em tempo real também
             await _hub.Clients.All.SendAsync("novoPedido");
 
             return Ok(item);
         }
 
-        // 🔹 9. Pagar
+        // 🔹 9. Pagar pedido
         [HttpPost("pagar")]
         public async Task<ActionResult> PagarPedido(int pedidoId, string tipo)
         {
@@ -189,6 +190,9 @@ namespace PizzariaAPI.Controllers
 
             if (pedido == null)
                 return NotFound();
+
+            if (pedido.Status != "Fechado")
+                return BadRequest("Feche o pedido antes de pagar");
 
             var itens = await _context.PedidoItens
                 .Where(i => i.PedidoId == pedidoId)
@@ -227,6 +231,8 @@ namespace PizzariaAPI.Controllers
 
             return Ok(total);
         }
+
+        // 🔹 11. Remover item
         [HttpDelete("item/{itemId}")]
         public async Task<ActionResult> RemoverItem(int itemId)
         {
@@ -241,6 +247,27 @@ namespace PizzariaAPI.Controllers
             await _hub.Clients.All.SendAsync("novoPedido");
 
             return Ok();
+        }
+
+        // 🔹 12. Fechar mesa (NOVO)
+        [HttpPost("fechar-mesa")]
+        public async Task<IActionResult> FecharMesa(int mesaId)
+        {
+            var pedidos = await _context.Pedidos
+                .Where(p => p.MesaId == mesaId && p.Status == "Aberto")
+                .ToListAsync();
+
+            if (!pedidos.Any())
+                return BadRequest("Nenhum pedido aberto para essa mesa");
+
+            foreach (var p in pedidos)
+            {
+                p.Status = "Fechado";
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { mensagem = "Mesa fechada com sucesso" });
         }
     }
 }

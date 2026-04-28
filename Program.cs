@@ -4,11 +4,11 @@ using PizzariaAPI.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 🔹 DB
+// DB
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 🔹 CORS
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("LiberarTudo",
@@ -17,7 +17,7 @@ builder.Services.AddCors(options =>
                         .AllowAnyHeader());
 });
 
-// 🔹 Controllers + Swagger + SignalR
+// Controllers + Swagger + SignalR
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -25,17 +25,18 @@ builder.Services.AddSignalR();
 
 var app = builder.Build();
 
-// 🔹 Middleware (ORDEM IMPORTA)
+// Middleware
 app.UseRouting();
 
 app.UseCors("LiberarTudo");
 
 app.UseStaticFiles();
 
+// Swagger ativo
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// 🔹 Endpoints
+// Endpoints
 app.MapControllers();
 app.MapHub<PedidoHub>("/pedidoHub");
 
